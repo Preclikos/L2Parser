@@ -16,15 +16,15 @@ namespace L2DataParser.L2Models
     /*
         public int? RecipeDataId { get; set; }
         public RecipeData RecipeData { get; set; }
-
+    */
         [InputDataField(Name = "item_type", SubParser = true, ParserName = "ItemTypeParser")]
         public ItemType ItemType { get; set; }
-        /*
+        
         [InputDataField(Name = "etcitem_type", SubParser = true, ParserName = "EtcItemTypeParser")]
         public EtcItemType EtcItemType { get; set; }
 
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         [InputDataField(Name = "html")]
-        public string Html { get; set; }*/
+        public string Html { get; set; }
     }
 }

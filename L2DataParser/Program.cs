@@ -2,6 +2,7 @@
 using L2DataParser.L2Models;
 using L2DataParser.Models;
 using L2DataParser.Parsers;
+using Microsoft.EntityFrameworkCore;
 
 namespace L2DataParser
 {
@@ -12,6 +13,12 @@ namespace L2DataParser
         static void Main(string[] args)
         {
 
+            var dbContext = new L2DataContext();
+
+            dbContext.Database.ExecuteSqlRaw("DELETE FROM [dbo].[ItemNames]");
+            dbContext.Database.ExecuteSqlRaw("DELETE FROM [dbo].[ItemDatas]");
+            dbContext.SaveChanges();
+
             IEnumerable<BaseData> BaseItems = Finders.GetBaseDataParsedObject(dataFolder + "\\ItemData.txt", ParserFileType.DataItem);
             MainParser BaseItemDatasParser = new MainParser(typeof(ItemData));
             List<ItemData> itemData = new List<ItemData>();
@@ -20,8 +27,17 @@ namespace L2DataParser
             {
                 if (item.ItemType == "item_begin;item_end")
                 {
-                    ItemData itemDataParsed = (ItemData)BaseItemDatasParser.Parse(item);
-                    itemData.Add(itemDataParsed);
+
+                    using (var transaction = dbContext.Database.BeginTransaction())
+                    {
+                        ItemData itemDataParsed = (ItemData)BaseItemDatasParser.Parse(item);
+                        itemData.Add(itemDataParsed);
+                        dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[ItemDatas] ON");
+                        dbContext.ItemDatas.Add(itemDataParsed);
+                        dbContext.SaveChanges();
+                        dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[ItemDatas] OFF");
+                        transaction.Commit();
+                    }
                 }
                 else
                 if (item.ItemType == "set_begin;set_end")
@@ -37,8 +53,18 @@ namespace L2DataParser
             {
                 if (itemData.Any(a => a.Id == item.Id))
                 {
-                    ItemName itemDataParsed = (ItemName)BaseItemNameParser.Parse(item);
 
+                    using (var transaction = dbContext.Database.BeginTransaction())
+                    {
+                        ItemName itemNameParsed = (ItemName)BaseItemNameParser.Parse(item);
+                        dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[ItemNames] ON");
+                        itemNames.Add(itemNameParsed);
+                        dbContext.ItemNames.Add(itemNameParsed);
+                        dbContext.ItemDatas.SingleOrDefault(s => s.Id == itemNameParsed.Id).ItemNameId = itemNameParsed.Id;
+                        dbContext.SaveChanges();
+                        dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[ItemNames] OFF");
+                        transaction.Commit();
+                    }
                 }
                 else
                 {
@@ -46,7 +72,7 @@ namespace L2DataParser
                 }
             }
 
-
+            /*
             IEnumerable<BaseData> BaseNpcs = Finders.GetBaseDataParsedObject(dataFolder + "\\NpcData.txt", ParserFileType.DataItem);
             MainParser BaseNpcDatasParser = new MainParser(typeof(NpcData));
             List<NpcData> npcData = new List<NpcData>();
@@ -70,7 +96,7 @@ namespace L2DataParser
                 {
                     Console.WriteLine(item.NameId + " not found in npc datas.");
                 }
-            }
+            }*/
         }
     }
 }
